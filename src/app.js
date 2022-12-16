@@ -4,6 +4,7 @@ const app = express();
 
 app.use(express.json());
 
+let nextId = 6;
 const teams = [
   {
     id: 1,
@@ -33,43 +34,56 @@ const teams = [
 ]
 
 app.get('/teams', (req, res) => res.status(200).json({ teams }));
+
 app.get('/teams/:id', (req, res) => {
-  const team = teams.find(({ id }) => id === Number(req.params.id))
+  const id = Number(req.params.id);
+  const team = teams.find(team => team.id === id)
 
   if (!team) {
-    res.status(404).send('<h1>Team not found</h1>')
+    res.sendStatus(404)
   }
-  res.status(200).json(team.name);
+  res.json(team);
 })
 
-app.post('/teams', (req, res) => {
-  const newTeam = { ...req.body };
-  teams.push(newTeam);
+const validateTeam = (req, res, next) => {
+  const requiredProperties = ['name', 'nickname']
+  if (requiredProperties.every(property => property in req.body)) {
+    next()
+  } else {
+    res.sendStatus(400)
+  }
+}
 
-  res.status(201).json({ team: newTeam })
+app.post('/teams', validateTeam, (req, res) => {
+     const team = { id: nextId, ...req.body }
+    team.push(team)
+    nextId += 1
+    res.status(201).json(team)
+    res.sendStatus(400)
 })
 
-app.put('/teams/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, nickname } = req.body;
+app.put('/teams/:id', validateTeam, (req, res) => {
+  const id = Number(req.params.id)
+  const team = teams.find(team => team.id === id)
 
-  const updateTeam = teams.find((team) => team.id === Number(id));
-
-  if (!updateTeam) {
-    res.status(404).json({ message: 'Team not found' });
+  if (team) {
+    const index = teams.indexOf(team)
+    const updated = { id, ...req.body }
+    teams.splice(index, 1, updated)
+    res.status(201).json(updated)
+  } else {
+    res.sendStatus(400)
   }
-
-  updateTeam.name = name;
-  updateTeam.nickname = nickname;
-  res.status(200).json({ updateTeam });
 })
 
 app.delete('/teams/:id', (req, res) => {
-  const { id } = req.params;
-  const arrayPosition = teams.findIndex((team) => team.id === Number(id));
-  teams.splice(arrayPosition, 1);
-
-  res.status(200).end();
+const id = Number(req.params.id)
+const team = teams.find(team => team.id === id)
+if (team) {
+  const index = teams.indexOf(team)
+  teams.splice(index, 1)
+}
+res.sendStatus(204)
 })
 
 module.exports = app;
